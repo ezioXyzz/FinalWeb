@@ -14,7 +14,7 @@
     {
       "binding": "DB",
       "database_name": "eziocloud-db",
-      "database_id": "00000000-0000-0000-0000-000000000001",
+      "database_id": "7c88c57f-08fc-4bc8-9807-dcc386d4528f"
       "migrations_dir": "drizzle/d1"
     }
   ]
