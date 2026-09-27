@@ -1,0 +1,6 @@
+# Copy this file to .dev.vars for local Worker testing. Use throwaway test values.
+JWT_SECRET=replace-with-a-long-random-secret
+LOCAL_AUTH_USERS_JSON={"imira":"replace-admin-password","pahan":"replace-member-password","buddi":"replace-member-password"}
+GOOGLE_CLIENT_ID=replace-with-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=replace-with-google-oauth-client-secret
+GOOGLE_REDIRECT_URI=https://your-worker.workers.dev/
