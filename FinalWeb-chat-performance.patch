@@ -1,0 +1,356 @@
+[1mdiff --git a/client/src/index.css b/client/src/index.css[m
+[1mindex 0455dc5..37b39c8 100644[m
+[1m--- a/client/src/index.css[m
+[1m+++ b/client/src/index.css[m
+[36m@@ -130,7 +130,7 @@[m
+   border: 1px solid rgba(143, 105, 255, 0.26) !important;[m
+   background: linear-gradient(145deg, rgba(20, 23, 42, 0.94), rgba(10, 13, 25, 0.96)) !important;[m
+   box-shadow: 0 18px 54px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.055);[m
+[31m-  backdrop-filter: blur(24px) saturate(130%);[m
+[32m+[m[32m  backdrop-filter: blur(10px) saturate(115%);[m
+ }[m
+ .glass-login-card { border-color: rgba(36, 219, 255, 0.3) !important; border-radius: 1.8rem; }[m
+ .glass-panel { border-radius: 1.5rem; }[m
+[36m@@ -139,21 +139,25 @@[m
+   border-color: rgba(151, 94, 255, 0.24) !important;[m
+   background: rgba(7, 10, 21, 0.96) !important;[m
+   box-shadow: 12px 0 44px rgba(0, 0, 0, 0.28);[m
+[31m-  backdrop-filter: blur(28px) saturate(140%);[m
+[32m+[m[32m  backdrop-filter: blur(12px) saturate(120%);[m
+ }[m
+ .glass-topbar {[m
+   border-color: rgba(52, 173, 228, 0.19) !important;[m
+   background: rgba(8, 11, 22, 0.88) !important;[m
+[31m-  backdrop-filter: blur(24px) saturate(140%);[m
+[32m+[m[32m  backdrop-filter: blur(10px) saturate(120%);[m
+ }[m
+ .glass-search {[m
+   border-color: rgba(49, 197, 255, 0.25) !important;[m
+   background: rgba(15, 19, 36, 0.9) !important;[m
+   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035), 0 0 20px rgba(0, 195, 255, 0.04);[m
+[31m-  backdrop-filter: blur(20px);[m
+[32m+[m[32m  backdrop-filter: blur(8px);[m
+   transition: border-color 170ms var(--ease-out), box-shadow 170ms var(--ease-out), transform 170ms var(--ease-out);[m
+ }[m
+ .glass-search:focus-within { border-color: rgba(35, 229, 255, 0.72) !important; box-shadow: 0 0 0 3px rgba(30, 217, 255, 0.1), 0 0 28px rgba(0, 203, 255, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.04); }[m
+[32m+[m[32m@media (max-width: 768px) {[m
+[32m+[m[32m  .glass-login-card, .glass-panel, .glass-soft-card, .glass-sidebar, .glass-topbar, .glass-search { backdrop-filter: none; }[m
+[32m+[m[32m  .glass-login-card, .glass-panel, .glass-soft-card { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24); }[m
+[32m+[m[32m}[m
+ .search-shortcut { align-items: center; justify-content: center; min-width: 1.55rem; height: 1.55rem; border: 1px solid rgba(119, 154, 207, 0.22); border-radius: 0.45rem; color: #8391ae; font: 500 0.7rem var(--font-mono); }[m
+ .search-clear { color: #91a1c0; transition: color 140ms var(--ease-out), background 140ms var(--ease-out); }[m
+ .search-clear:hover { background: rgba(27, 207, 255, 0.1); color: #25e5ff; }[m
+[1mdiff --git a/client/src/pages/Home.tsx b/client/src/pages/Home.tsx[m
+[1mindex e22fe1d..0ca6b22 100644[m
+[1m--- a/client/src/pages/Home.tsx[m
+[1m+++ b/client/src/pages/Home.tsx[m
+[36m@@ -20,6 +20,7 @@[m [mimport {[m
+   Link2,[m
+   Loader2,[m
+   LogOut,[m
+[32m+[m[32m  MessageCircle,[m
+   Pencil,[m
+   Plus,[m
+   RefreshCw,[m
+[36m@@ -34,7 +35,7 @@[m [mimport {[m
+ import { FormEvent, useEffect, useRef, useState } from "react";[m
+ import { trpc } from "@/lib/trpc";[m
+ [m
+[31m-type Section = "Overview" | "My files" | "Shared with me" | "Notes & links" | "Settings";[m
+[32m+[m[32mtype Section = "Overview" | "My files" | "Shared with me" | "Notes & links" | "Chat" | "Settings";[m
+ type DriveFile = {[m
+   id: string;[m
+   name: string;[m
+[36m@@ -54,12 +55,15 @@[m [mtype SharedLinkEntry = {[m
+   createdAt: Date;[m
+   updatedAt: Date;[m
+ };[m
+[32m+[m[32mtype ChatUser = { username: string; displayName: string };[m
+[32m+[m[32mtype ChatMessage = { id: number; sender: string; recipient: string; body: string; createdAt: Date };[m
+ [m
+ const navigation: Array<{ label: Section; icon: typeof LayoutGrid }> = [[m
+   { label: "Overview", icon: LayoutGrid },[m
+   { label: "My files", icon: Folder },[m
+   { label: "Shared with me", icon: Link2 },[m
+   { label: "Notes & links", icon: FileText },[m
+[32m+[m[32m  { label: "Chat", icon: MessageCircle },[m
+   { label: "Settings", icon: Settings },[m
+ ];[m
+ const MAX_UPLOAD_FILE_BYTES = 20 * 1024 * 1024;[m
+[36m@@ -121,6 +125,8 @@[m [mexport default function Home() {[m
+   const [linkUrl, setLinkUrl] = useState("");[m
+   const [linkCategory, setLinkCategory] = useState("General");[m
+   const [linkNotes, setLinkNotes] = useState("");[m
+[32m+[m[32m  const [selectedChatUser, setSelectedChatUser] = useState("");[m
+[32m+[m[32m  const [chatDraft, setChatDraft] = useState("");[m
+   const [downloadingFileId, setDownloadingFileId] = useState<string | null>(null);[m
+   const [cloudflareUploadPending, setCloudflareUploadPending] = useState(false);[m
+   const fileInputRef = useRef<HTMLInputElement>(null);[m
+[36m@@ -177,6 +183,24 @@[m [mexport default function Home() {[m
+   const sharedLinks = trpc.links.list.useQuery(undefined, {[m
+     enabled: signedIn && activeSection === "Notes & links",[m
+   });[m
+[32m+[m[32m  const chatUsers = trpc.chat.users.useQuery(undefined, { enabled: signedIn });[m
+[32m+[m[32m  const chatMessages = trpc.chat.messages.useQuery(undefined, {[m
+[32m+[m[32m    enabled: signedIn && activeSection === "Chat",[m
+[32m+[m[32m    refetchInterval: 5000,[m
+[32m+[m[32m  });[m
+[32m+[m[32m  const sendChatMessage = trpc.chat.send.useMutation({[m
+[32m+[m[32m    onSuccess: async () => {[m
+[32m+[m[32m      setChatDraft("");[m
+[32m+[m[32m      await trpcUtils.chat.messages.invalidate();[m
+[32m+[m[32m    },[m
+[32m+[m[32m    onError: error => toast.error(error.message),[m
+[32m+[m[32m  });[m
+[32m+[m[32m  useEffect(() => {[m
+[32m+[m[32m    if (!selectedChatUser && chatUsers.data?.length) {[m
+[32m+[m[32m      const firstOther = chatUsers.data.find(user => user.username !== authStatus.data?.user?.username);[m
+[32m+[m[32m      if (firstOther) setSelectedChatUser(firstOther.username);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }, [selectedChatUser, chatUsers.data, authStatus.data?.user?.username]);[m
+   const createSharedLink = trpc.links.create.useMutation({[m
+     onSuccess: async () => {[m
+       await trpcUtils.links.list.invalidate();[m
+[36m@@ -532,6 +556,7 @@[m [mexport default function Home() {[m
+     "My files": "My files",[m
+     "Shared with me": "Shared with me",[m
+     "Notes & links": "Notes & links",[m
+[32m+[m[32m    Chat: "Chat",[m
+     Settings: "Settings",[m
+   };[m
+   const pageDescription: Record<Section, string> = {[m
+[36m@@ -539,9 +564,34 @@[m [mexport default function Home() {[m
+     "My files": "Files and folders EzioCloud can access in your Google Drive.",[m
+     "Shared with me": "Drive files shared with your Google account.",[m
+     "Notes & links": "A shared, searchable collection for useful links and notes.",[m
+[32m+[m[32m    Chat: "Send direct messages to anyone in your EzioCloud workspace.",[m
+     Settings: "Manage your account and Google Drive connection.",[m
+   };[m
+   const linkFormBusy = createSharedLink.isPending || createSharedLinksBulk.isPending || updateSharedLink.isPending;[m
+[32m+[m[32m  const currentUsername = authStatus.data?.user?.username || "";[m
+[32m+[m[32m  const selectedChatMessages = (chatMessages.data || []).filter(message =>[m
+[32m+[m[32m    selectedChatUser && ((message.sender === currentUsername && message.recipient === selectedChatUser) ||[m
+[32m+[m[32m      (message.sender === selectedChatUser && message.recipient === currentUsername))[m
+[32m+[m[32m  );[m
+[32m+[m[32m  const chatView = ([m
+[32m+[m[32m    <section className="mt-7 grid gap-5 lg:grid-cols-[260px_1fr]">[m
+[32m+[m[32m      <div className="glass-panel rounded-[24px] border border-[#e1e5df] bg-white p-4">[m
+[32m+[m[32m        <div className="mb-3 flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#7185bc]">WORKSPACE USERS</p><MessageCircle className="size-4 text-[#7185bc]" /></div>[m
+[32m+[m[32m        <div className="space-y-1">[m
+[32m+[m[32m          {(chatUsers.data || []).filter(user => user.username !== currentUsername).map(user => <button key={user.username} type="button" onClick={() => setSelectedChatUser(user.username)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors ${selectedChatUser === user.username ? "bg-[#7185bc]/12 text-[#52689f]" : "text-[#69758d] hover:bg-[#f3f5f0]"}`}><span className="grid size-9 place-items-center rounded-xl bg-[#edf1fb] text-sm font-bold text-[#6278b0]">{user.displayName.slice(0, 1).toUpperCase()}</span><span><span className="block text-sm font-semibold">{user.displayName}</span><span className="block text-xs text-[#8a95a7]">@{user.username}</span></span></button>)}[m
+[32m+[m[32m          {chatUsers.isLoading && <p className="px-3 py-4 text-sm text-[#78849c]">Loading users…</p>}[m
+[32m+[m[32m          {!chatUsers.isLoading && (chatUsers.data || []).filter(user => user.username !== currentUsername).length === 0 && <p className="px-3 py-4 text-sm text-[#78849c]">No other users are configured yet.</p>}[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m      <div className="glass-panel flex min-h-[560px] flex-col rounded-[24px] border border-[#e1e5df] bg-white p-5 md:p-6">[m
+[32m+[m[32m        {selectedChatUser ? <>[m
+[32m+[m[32m          <div className="flex items-center gap-3 border-b border-[#edf0ea] pb-4"><span className="grid size-10 place-items-center rounded-xl bg-[#edf1fb] text-sm font-bold text-[#6278b0]">{selectedChatUser.slice(0, 1).toUpperCase()}</span><div><h2 className="font-semibold">Chat with {selectedChatUser}</h2><p className="text-xs text-[#8a95a7]">Messages are visible only to the two participants.</p></div></div>[m
+[32m+[m[32m          <div className="flex-1 space-y-3 overflow-y-auto py-5">{chatMessages.isLoading ? <div className="grid h-full place-items-center text-sm text-[#78849c]">Loading conversation…</div> : selectedChatMessages.length === 0 ? <div className="grid h-full place-items-center text-center text-sm text-[#78849c]"><p>No messages yet.<br />Send the first message below.</p></div> : selectedChatMessages.map(message => <div key={message.id} className={`flex ${message.sender === currentUsername ? "justify-end" : "justify-start"}`}><div className={`max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-6 ${message.sender === currentUsername ? "bg-[#7185bc] text-white" : "bg-[#f0f2ed] text-[#3d4b61]"}`}><p className="whitespace-pre-wrap break-words">{message.body}</p><time className={`mt-1 block text-[10px] ${message.sender === currentUsername ? "text-white/70" : "text-[#8a95a7]"}`}>{new Date(message.createdAt).toLocaleString()}</time></div></div>)}</div>[m
+[32m+[m[32m          <form onSubmit={event => { event.preventDefault(); if (chatDraft.trim()) sendChatMessage.mutate({ recipient: selectedChatUser, body: chatDraft }); }} className="flex gap-2 border-t border-[#edf0ea] pt-4"><Input value={chatDraft} onChange={event => setChatDraft(event.target.value)} maxLength={2000} placeholder={`Message ${selectedChatUser}…`} className="h-11 rounded-xl border-[#e2e5df] bg-[#fbfcf8]" /><Button type="submit" disabled={sendChatMessage.isPending || !chatDraft.trim()} className="glass-button h-11 rounded-xl px-4"><MessageCircle className="mr-2 size-4" />Send</Button></form>[m
+[32m+[m[32m        </> : <div className="grid flex-1 place-items-center text-center text-sm text-[#78849c]"><p>Select a workspace user to start a conversation.</p></div>}[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m    </section>[m
+[32m+[m[32m  );[m
+   const notesAndLinksView = ([m
+     <section className="mt-7 space-y-5">[m
+       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">[m
+[36m@@ -653,7 +703,7 @@[m [mexport default function Home() {[m
+             </div>[m
+           </section>}[m
+ [m
+[31m-          {activeSection === "Settings" && isAdmin ? <div className="grid max-w-4xl gap-5 lg:grid-cols-2">[m
+[32m+[m[32m          {activeSection === "Chat" ? chatView : activeSection === "Settings" && isAdmin ? <div className="grid max-w-4xl gap-5 lg:grid-cols-2">[m
+             <section className="glass-panel rounded-[24px] border border-[#e1e5df] bg-white p-6 md:p-7">[m
+               <div className="flex items-center gap-3"><div className="grid size-11 place-items-center rounded-2xl bg-[#edf4ff] text-[#4e78aa]"><HardDrive className="size-5" /></div><div><p className="text-xs font-bold uppercase tracking-[0.12em] text-[#869189]">Storage provider</p><h2 className="mt-0.5 text-xl font-semibold">Google Drive</h2></div></div>[m
+               <div className="my-6 h-px bg-[#edf0ea]" />[m
+[1mdiff --git a/drizzle/schema.ts b/drizzle/schema.ts[m
+[1mindex f2a52fb..d6c2957 100644[m
+[1m--- a/drizzle/schema.ts[m
+[1m+++ b/drizzle/schema.ts[m
+[36m@@ -41,9 +41,20 @@[m [mexport const sharedLinks = mysqlTable("shared_links", {[m
+   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),[m
+ });[m
+ [m
+[32m+[m[32m/** Direct user-to-user chat messages for the shared EzioCloud workspace. */[m
+[32m+[m[32mexport const chatMessages = mysqlTable("chat_messages", {[m
+[32m+[m[32m  id: int("id").autoincrement().primaryKey(),[m
+[32m+[m[32m  sender: varchar("sender", { length: 64 }).notNull(),[m
+[32m+[m[32m  recipient: varchar("recipient", { length: 64 }).notNull(),[m
+[32m+[m[32m  body: text("body").notNull(),[m
+[32m+[m[32m  createdAt: timestamp("createdAt").defaultNow().notNull(),[m
+[32m+[m[32m});[m
+[32m+[m
+ export type User = typeof users.$inferSelect;[m
+ export type InsertUser = typeof users.$inferInsert;[m
+ export type GoogleDriveConnection = typeof googleDriveConnections.$inferSelect;[m
+ export type InsertGoogleDriveConnection = typeof googleDriveConnections.$inferInsert;[m
+ export type SharedLink = typeof sharedLinks.$inferSelect;[m
+ export type InsertSharedLink = typeof sharedLinks.$inferInsert;[m
+[32m+[m[32mexport type ChatMessage = typeof chatMessages.$inferSelect;[m
+[32m+[m[32mexport type InsertChatMessage = typeof chatMessages.$inferInsert;[m
+[1mdiff --git a/server/cloudflare.ts b/server/cloudflare.ts[m
+[1mindex 7f6dbe3..84fb9a5 100644[m
+[1m--- a/server/cloudflare.ts[m
+[1m+++ b/server/cloudflare.ts[m
+[36m@@ -84,6 +84,12 @@[m [mexport default {[m
+       return new Response("This asset path is no longer used by EzioCloud.", { status: 404 });[m
+     }[m
+ [m
+[31m-    return env.ASSETS.fetch(request);[m
+[32m+[m[32m    const assetResponse = await env.ASSETS.fetch(request);[m
+[32m+[m[32m    if (pathname.startsWith("/assets/") && assetResponse.ok) {[m
+[32m+[m[32m      const headers = new Headers(assetResponse.headers);[m
+[32m+[m[32m      headers.set("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");[m
+[32m+[m[32m      return new Response(assetResponse.body, { status: assetResponse.status, statusText: assetResponse.statusText, headers });[m
+[32m+[m[32m    }[m
+[32m+[m[32m    return assetResponse;[m
+   },[m
+ };[m
+[1mdiff --git a/server/db.ts b/server/db.ts[m
+[1mindex f896f2b..dc9a3a7 100644[m
+[1m--- a/server/db.ts[m
+[1m+++ b/server/db.ts[m
+[36m@@ -1,4 +1,4 @@[m
+[31m-import { asc, desc, eq } from "drizzle-orm";[m
+[32m+[m[32mimport { asc, desc, eq, or } from "drizzle-orm";[m
+ import { drizzle } from "drizzle-orm/mysql2";[m
+ import {[m
+   googleDriveConnections,[m
+[36m@@ -9,6 +9,9 @@[m [mimport {[m
+   GoogleDriveConnection,[m
+   users,[m
+   sharedLinks,[m
+[32m+[m[32m  chatMessages,[m
+[32m+[m[32m  InsertChatMessage,[m
+[32m+[m[32m  ChatMessage,[m
+ } from "../drizzle/schema";[m
+ import { getWorkerBindings, type D1DatabaseBinding } from "./cloudflare-runtime";[m
+ import { ENV } from "./_core/env";[m
+[36m@@ -38,6 +41,14 @@[m [minterface D1SharedLinkRow {[m
+   updatedAt: number | string;[m
+ }[m
+ [m
+[32m+[m[32minterface D1ChatMessageRow {[m
+[32m+[m[32m  id: number;[m
+[32m+[m[32m  sender: string;[m
+[32m+[m[32m  recipient: string;[m
+[32m+[m[32m  body: string;[m
+[32m+[m[32m  createdAt: number | string;[m
+[32m+[m[32m}[m
+[32m+[m
+ function d1Database(): D1DatabaseBinding | undefined {[m
+   return getWorkerBindings()?.DB;[m
+ }[m
+[36m@@ -63,6 +74,10 @@[m [mfunction mapD1SharedLink(row: D1SharedLinkRow): SharedLink {[m
+   } as SharedLink;[m
+ }[m
+ [m
+[32m+[m[32mfunction mapD1ChatMessage(row: D1ChatMessageRow): ChatMessage {[m
+[32m+[m[32m  return { ...row, createdAt: fromD1Date(row.createdAt) } as ChatMessage;[m
+[32m+[m[32m}[m
+[32m+[m
+ // Lazily create the Drizzle instance so local tooling can run without a DB.[m
+ export async function getDb() {[m
+   if (!_db && process.env.DATABASE_URL) {[m
+[36m@@ -279,3 +294,38 @@[m [mexport async function deleteSharedLink(id: number) {[m
+ [m
+   await db.delete(sharedLinks).where(eq(sharedLinks.id, id));[m
+ }[m
+[32m+[m
+[32m+[m[32mexport async function listChatMessages(username: string) {[m
+[32m+[m[32m  const d1 = d1Database();[m
+[32m+[m[32m  if (d1) {[m
+[32m+[m[32m    const result = await d1[m
+[32m+[m[32m      .prepare("SELECT id, sender, recipient, body, createdAt FROM chat_messages WHERE sender = ? OR recipient = ? ORDER BY createdAt ASC LIMIT 500")[m
+[32m+[m[32m      .bind(username, username)[m
+[32m+[m[32m      .all<D1ChatMessageRow>();[m
+[32m+[m[32m    return result.results.map(mapD1ChatMessage);[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  const db = await getDb();[m
+[32m+[m[32m  if (!db) throw new Error("Database is unavailable");[m
+[32m+[m[32m  return db[m
+[32m+[m[32m    .select()[m
+[32m+[m[32m    .from(chatMessages)[m
+[32m+[m[32m    .where(or(eq(chatMessages.sender, username), eq(chatMessages.recipient, username)))[m
+[32m+[m[32m    .orderBy(asc(chatMessages.createdAt))[m
+[32m+[m[32m    .limit(500);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mexport async function createChatMessage(message: InsertChatMessage) {[m
+[32m+[m[32m  const d1 = d1Database();[m
+[32m+[m[32m  if (d1) {[m
+[32m+[m[32m    await d1[m
+[32m+[m[32m      .prepare("INSERT INTO chat_messages (sender, recipient, body, createdAt) VALUES (?, ?, ?, ?)")[m
+[32m+[m[32m      .bind(message.sender, message.recipient, message.body, message.createdAt?.getTime() ?? Date.now())[m
+[32m+[m[32m      .run();[m
+[32m+[m[32m    return;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  const db = await getDb();[m
+[32m+[m[32m  if (!db) throw new Error("Database is unavailable");[m
+[32m+[m[32m  await db.insert(chatMessages).values(message);[m
+[32m+[m[32m}[m
+[1mdiff --git a/server/routers.ts b/server/routers.ts[m
+[1mindex 9886a06..82b0698 100644[m
+[1m--- a/server/routers.ts[m
+[1m+++ b/server/routers.ts[m
+[36m@@ -528,6 +528,29 @@[m [mexport const appRouter = router({[m
+         ));[m
+       }),[m
+   }),[m
+[32m+[m[32m  chat: router({[m
+[32m+[m[32m    users: publicProcedure.query(({ ctx }) => {[m
+[32m+[m[32m      requireLocalSession(ctx);[m
+[32m+[m[32m      return getLocalAccounts().map(account => ({[m
+[32m+[m[32m        username: account.username,[m
+[32m+[m[32m        displayName: account.displayName,[m
+[32m+[m[32m      }));[m
+[32m+[m[32m    }),[m
+[32m+[m[32m    messages: publicProcedure.query(({ ctx }) => {[m
+[32m+[m[32m      const user = requireLocalSession(ctx);[m
+[32m+[m[32m      return db.listChatMessages(user.username);[m
+[32m+[m[32m    }),[m
+[32m+[m[32m    send: publicProcedure[m
+[32m+[m[32m      .input(z.object({ recipient: z.string().min(1).max(64), body: z.string().trim().min(1).max(2000) }))[m
+[32m+[m[32m      .mutation(async ({ ctx, input }) => {[m
+[32m+[m[32m        const sender = requireLocalSession(ctx);[m
+[32m+[m[32m        const recipient = getLocalAccounts().find(account => account.username === input.recipient);[m
+[32m+[m[32m        if (!recipient) throw new TRPCError({ code: "BAD_REQUEST", message: "That user is not available." });[m
+[32m+[m[32m        if (recipient.username === sender.username) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose another user to start a chat." });[m
+[32m+[m[32m        await db.createChatMessage({ sender: sender.username, recipient: recipient.username, body: input.body.trim() });[m
+[32m+[m[32m        return { success: true } as const;[m
+[32m+[m[32m      }),[m
+[32m+[m[32m  }),[m
+   links: createSharedLinksRouter({ requireLocalSession, requireLocalAdmin }),[m
+ });[m
+ [m
+[1mdiff --git a/drizzle/0003_create_chat_messages.sql b/drizzle/0003_create_chat_messages.sql[m
+[1mnew file mode 100644[m
+[1mindex 0000000..895e222[m
+[1m--- /dev/null[m
+[1m+++ b/drizzle/0003_create_chat_messages.sql[m
+[36m@@ -0,0 +1,8 @@[m
+[32m+[m[32mCREATE TABLE `chat_messages` ([m
+[32m+[m	[32m`id` int AUTO_INCREMENT NOT NULL,[m
+[32m+[m	[32m`sender` varchar(64) NOT NULL,[m
+[32m+[m	[32m`recipient` varchar(64) NOT NULL,[m
+[32m+[m	[32m`body` text NOT NULL,[m
+[32m+[m	[32m`createdAt` timestamp NOT NULL DEFAULT (now()),[m
+[32m+[m	[32mCONSTRAINT `chat_messages_id` PRIMARY KEY(`id`)[m
+[32m+[m[32m);[m
+[1mdiff --git a/drizzle/d1/0002_create_chat_messages.sql b/drizzle/d1/0002_create_chat_messages.sql[m
+[1mnew file mode 100644[m
+[1mindex 0000000..dc4b3ef[m
+[1m--- /dev/null[m
+[1m+++ b/drizzle/d1/0002_create_chat_messages.sql[m
+[36m@@ -0,0 +1,9 @@[m
+[32m+[m[32mCREATE TABLE IF NOT EXISTS chat_messages ([m
+[32m+[m[32m  id INTEGER PRIMARY KEY AUTOINCREMENT,[m
+[32m+[m[32m  sender TEXT NOT NULL,[m
+[32m+[m[32m  recipient TEXT NOT NULL,[m
+[32m+[m[32m  body TEXT NOT NULL,[m
+[32m+[m[32m  createdAt INTEGER NOT NULL[m
+[32m+[m[32m);[m
+[32m+[m[32mCREATE INDEX IF NOT EXISTS chat_messages_participants_created_idx[m
+[32m+[m[32m  ON chat_messages (sender, recipient, createdAt DESC);[m
